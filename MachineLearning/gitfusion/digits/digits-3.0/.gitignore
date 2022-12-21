@@ -1,0 +1,15 @@
+# Ignore these file types
+*.cfg
+*.log
+*.pyc
+*.swp
+
+# Ignore emacs backup files
+*~
+
+# Ignore these files
+.coverage
+
+# Ignore these directories
+/venv/
+/digits/jobs/

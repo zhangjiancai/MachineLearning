@@ -1,0 +1,71 @@
+{# Copyright (c) 2014-2015, NVIDIA CORPORATION.  All rights reserved. #}
+
+<!doctype html>
+<head>
+    <link rel="icon" href="{{url_for('static', filename='images/nvidia.ico')}}" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap-theme.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/c3.min.css') }}">
+    <title>{% block title %}DIGITS{% endblock %}</title>
+
+    <script src="{{ url_for('static', filename='js/jquery-1.11.1.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/bootstrap.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/bootbox.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/digits.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/d3.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/c3.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/jquery.autocomplete.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/file_field.js') }}"></script>
+
+    {% block head %}
+    {% endblock %}
+</head>
+<body>
+<div class="navbar navbar-inverse navbar-fixed-top">
+    <div class="container">
+        <div class="navbar-header">
+            <a class="navbar-brand" href="/">DIGITS</a>
+        </div>
+        <ul class="nav navbar-nav">
+            {% block nav %}
+            {% endblock %}
+        </ul>
+        <div class="navbar-right">
+            <ul class="nav navbar-nav">
+                <li><a>Version {{server_version}}</a></li>
+                {% if server_name %}
+                <li><a>{{server_name}}</a></li>
+                {% endif %}
+            </ul>
+        </div>
+    </div>
+</div>
+
+<div class="container">
+    {% block content %}
+    {% endblock %}
+</div>
+<script>
+$(".explanation-tooltip").tooltip();
+
+window.onload = function () {
+    $('.autocomplete_path').autocomplete({
+       serviceUrl: '/autocomplete/path',
+       formatResult: function (suggestion, currentValue)
+       {
+            function baseName(str)
+            {
+               var base = new String(str).substring(str.lastIndexOf('/') + 1);
+               return base;
+            }
+            return baseName(suggestion.value);
+        }
+    });
+    $(".autocomplete_path").removeAttr("autocomplete");
+};
+
+</script>
+
+
+</body>

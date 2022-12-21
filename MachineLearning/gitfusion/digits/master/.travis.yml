@@ -1,0 +1,108 @@
+# Copyright (c) 2015-2017, NVIDIA CORPORATION.  All rights reserved.
+
+os: linux
+dist: trusty
+sudo: required
+language: python
+python: 2.7
+
+env:
+    global:
+        - PROTOBUF_ROOT=~/protobuf
+        - CAFFE_ROOT=~/caffe
+        - NV_CAFFE_TAG=v0.16.4
+        - BVLC_CAFFE_COMMIT=306672023ea79f0755e92ca345bc70c068a91cc4
+        - TORCH_ROOT=~/torch
+        - OMP_NUM_THREADS=1
+        - OPENBLAS_MAIN_FREE=1
+        - secure: "WSqrE+PQm76DdoRLRGKTK6fRWfXZjIb0BWCZm3IgHgFO7OE6fcK2tBnpDNNw4XQjmo27FFWlEhxN32g18P84n5PvErHaH65IuS9Nv6FkLlPXZlVqGNxbPmEA4oTkD/6Y6kZyZWZtLh2+/1ijuzQAPnIy/4BEuL8pdO+PsoJ9hYM="
+    matrix:
+        - DIGITS_TEST_FRAMEWORK=caffe CAFFE_FORK=NVIDIA
+        - DIGITS_TEST_FRAMEWORK=caffe CAFFE_FORK=BVLC
+        - DIGITS_TEST_FRAMEWORK=torch
+        - DIGITS_TEST_FRAMEWORK=tensorflow
+        - DIGITS_TEST_FRAMEWORK=none
+        - DIGITS_TEST_FRAMEWORK=none WITH_PLUGINS=false
+
+matrix:
+    include:
+        - env: LINT_CHECK
+          addons:
+              apt:
+                  packages:
+                      - closure-linter
+                      - python-flake8
+          install: true
+          script:
+              - ./digits-lint
+
+cache:
+    apt: true
+    directories:
+        - $PROTOBUF_ROOT
+        - $CAFFE_ROOT
+        - $TORCH_ROOT
+
+addons:
+    apt:
+        packages:
+            - build-essential
+            - cmake
+            - cython
+            - git
+            - gfortran
+            - graphviz
+            - libboost-filesystem-dev
+            - libboost-python-dev
+            - libboost-system-dev
+            - libboost-thread-dev
+            - libboost-regex-dev
+            - libgflags-dev
+            - libgoogle-glog-dev
+            - libhdf5-serial-dev
+            - libleveldb-dev
+            - liblmdb-dev
+            - libopenblas-dev
+            - libopencv-dev
+            - libturbojpeg
+            - libsnappy-dev
+            - python-dev
+            - python-flask
+            - python-gevent
+            - python-gevent-websocket
+            - python-gflags
+            - python-h5py
+            - python-matplotlib
+            - python-mock
+            - python-nose
+            - python-numpy
+            - python-opencv
+            - python-pil
+            - python-pip
+            - python-psutil
+            - python-pydot
+            - python-requests
+            - python-scipy
+            - python-six
+            - python-skimage
+
+before_install:
+    - deactivate
+    - virtualenv --system-site-packages ~/venv
+    - source ~/venv/bin/activate
+
+install:
+    - mkdir -p ~/.config/matplotlib
+    - echo "backend:agg" > ~/.config/matplotlib/matplotlibrc
+    - ./scripts/travis/install-protobuf.sh $PROTOBUF_ROOT
+    - ./scripts/travis/install-caffe.sh $CAFFE_ROOT
+    - pip install tornado==4.5.3
+    - if [ "$DIGITS_TEST_FRAMEWORK" == "torch" ]; then travis_wait ./scripts/travis/install-torch.sh $TORCH_ROOT; else unset TORCH_ROOT; fi
+    - pip install -r ./requirements.txt --force-reinstall
+    - if [ "$DIGITS_TEST_FRAMEWORK" == "tensorflow" ]; then travis_wait ./scripts/travis/install-tensorflow.sh; fi
+    - pip install -r ./requirements_test.txt
+    - pip install -e .
+    - if [ "$WITH_PLUGINS" != "false" ]; then find ./plugins/*/* -maxdepth 0 -type d | xargs -n1 pip install -e; fi
+
+script:
+    - ./digits-test -v

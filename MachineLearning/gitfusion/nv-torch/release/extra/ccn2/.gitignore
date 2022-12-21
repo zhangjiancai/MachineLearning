@@ -1,0 +1,7 @@
+*.so
+*.o
+cudaconv3/libcudaconv.so
+cudaconv3/obj/
+cudaconv3/bin/
+*~
+build

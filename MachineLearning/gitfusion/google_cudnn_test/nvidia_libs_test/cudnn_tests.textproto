@@ -1,0 +1,858 @@
+# This file contains custom test configs, in addition to the ones generated in
+# the source code.
+
+# This TRUE_HALF_CONFIG in NHWC format is not supported according to the
+# documentation, but the failure mode when trying to run IMPLICIT_PRECOMP_GEMM
+# (after successfully calling GetWorkspaceSize) is unexpected:
+#
+# cuDNN 6.0.21 fails to run the convolution with STATUS_INTERNAL_ERROR.
+#
+# See nvbugs/2071663. Resolution: will not fix.
+convolution_test {
+  reference {
+    input {
+      dimension: 1
+      dimension: 1
+      dimension: 128
+      dimension: 128
+      format: TENSOR_NHWC
+      data_type: DATA_HALF
+    }
+    filter {
+      dimension: 1
+      dimension: 1
+      dimension: 3
+      dimension: 3
+      format: TENSOR_NHWC
+      data_type: DATA_HALF
+    }
+    convolution {
+      pad: 1
+      pad: 1
+      compute_mode: DATA_FLOAT
+    }
+    fwd_algo: CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM
+    label: "NHWC_TRUE_HALF_CONFIG_Unsupported"
+  }
+  test {
+    convolution {
+      compute_mode: DATA_HALF
+    }
+  }
+}
+
+# This FLOAT_CONFIG in NHWC format fails with STATUS_INTERNAL_ERROR on cuDNN
+# 6.0.21. Fixed in cuDNN 7.
+#
+# See nvbugs/2071665. Resolution: will not fix.
+convolution_test {
+  reference {
+    input {
+      dimension: 1
+      dimension: 16
+      dimension: 81
+      dimension: 47
+      data_type: DATA_FLOAT
+      format: TENSOR_NHWC
+    }
+    filter {
+      dimension: 1
+      dimension: 16
+      dimension: 8
+      dimension: 11
+      data_type: DATA_FLOAT
+      format: TENSOR_NHWC
+    }
+    convolution {
+      pad: 4
+      pad: 5
+      compute_mode: DATA_FLOAT
+    }
+    fwd_algo: CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM
+    label: "NHWC_FLOAT_CONFIG_InternalError"
+  }
+}
+
+# This PSEUDO_HALF_CONFIG in NHWC format crashes in GetWorkspaceSize on cuDNN
+# 6.0.21. Fixed in cuDNN 7.
+#
+# See nvbugs/2071668.
+convolution_test {
+  reference {
+    input {
+      dimension: 1
+      dimension: 1
+      dimension: 128
+      dimension: 128
+      format: TENSOR_NHWC
+      data_type: DATA_HALF
+    }
+    filter {
+      dimension: 1
+      dimension: 1
+      dimension: 3
+      dimension: 3
+      format: TENSOR_NHWC
+      data_type: DATA_HALF
+    }
+    convolution {
+      pad: 1
+      pad: 1
+      compute_mode: DATA_FLOAT
+    }
+    fwd_algo: CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM
+    label: "NHWC_PSEUDO_HALF_CONFIG_Crash"
+  }
+}
+
+# This DOUBLE_CONFIG in NCHW format seems to produce incorrect results for
+# CONVOLUTION_BWD_FILTER_ALGO_FFT_TILING. Tested with cuDNN 7.0.5.
+#
+# See nvbugs/2072856.
+convolution_test {
+  reference {
+    input {
+      dimension: 1025
+      dimension: 64
+      dimension: 7
+      dimension: 33
+      format: TENSOR_NCHW
+      data_type: DATA_DOUBLE
+    }
+    filter {
+      dimension: 96
+      dimension: 64
+      dimension: 7
+      dimension: 11
+      format: TENSOR_NCHW
+      data_type: DATA_DOUBLE
+    }
+    convolution {
+      pad: 0
+      pad: 0
+      compute_mode: DATA_DOUBLE
+    }
+    bwd_filter_algo: CONVOLUTION_BWD_FILTER_ALGO_1
+    label: "CONVOLUTION_BWD_FILTER_1025x64x7x33_96x64x7x11_VALID_Incorrect"
+  }
+  test {
+    bwd_filter_algo: CONVOLUTION_BWD_FILTER_ALGO_FFT_TILING
+  }
+}
+
+# This DOUBLE_CONFIG in NCHW format fails with STATUS_EXECUTION_FAILED on
+# cuDNN 7.1.1, tested with V100-SXM2.
+#
+# See nvbugs/2072858. cuDNN 7.1.2 returns STATUS_NOT_SUPPORTED.
+#
+# Ideally, cudnnGetWorkspaceSize would already return STATUS_NOT_SUPPORTED,
+# but NVIDIA says that will take a while to fix. They will mention this
+# limitation in the documentation of the next release.
+#
+# See nvbugs/2082072.
+convolution_test {
+  reference {
+    input {
+      dimension: 29
+      dimension: 2
+      dimension: 864
+      dimension: 1556
+      format: TENSOR_NCHW
+      data_type: DATA_DOUBLE
+    }
+    filter {
+      dimension: 2
+      dimension: 2
+      dimension: 3
+      dimension: 3
+      format: TENSOR_NCHW
+      data_type: DATA_DOUBLE
+    }
+    convolution {
+      pad: 1
+      pad: 1
+      compute_mode: DATA_DOUBLE
+    }
+    bwd_filter_algo: CONVOLUTION_BWD_FILTER_ALGO_1
+    label: "CONVOLUTION_BWD_FILTER_NCHW_TRUE_HALF_29x2x864x1556_2x2x3x3_SAME_Fails"
+  }
+}
+
+# This TENSOR_OP_CONFIG in NCHW format returns some algorithms twice from
+# cudnnGetConvolutionForwardAlgorithm_v7, once for DEFAULT_MATH and once for
+# TENSOR_OP_MATH. I wasn't aware that a mathType member was added to
+# cudnnConvolution*AlgoPerf_t in cuDNN 7 to distinguish the two cases. So
+# cuDNN works as intended, and the ConvolutionTest.GetAlgorithm_v7 test now
+# handles it correctly.
+#
+# See nvbugs/2072859, works as intended.
+convolution_test {
+  reference {
+    input {
+      dimension: 52
+      dimension: 7
+      dimension: 112
+      dimension: 4
+      data_type: DATA_DOUBLE
+      format: TENSOR_NCHW
+    }
+    filter {
+      dimension: 873
+      dimension: 7
+      dimension: 3
+      dimension: 3
+      data_type: DATA_DOUBLE
+      format: TENSOR_NCHW
+    }
+    convolution {
+      pad: 0
+      pad: 0
+      compute_mode: DATA_DOUBLE
+    }
+    fwd_algo: CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM
+    label: "CONVOLUTION_FWD_NCHW_TENSOR_OP_52x7x112x4_873x7x3x3_VALID_GetAlgo_v7"
+  }
+  test {
+    input {
+      data_type: DATA_HALF
+      format: TENSOR_NCHW
+    }
+    filter {
+      data_type: DATA_HALF
+      format: TENSOR_NCHW
+    }
+    convolution {
+      compute_mode: DATA_HALF
+      math_type: TENSOR_OP_MATH
+    }
+    all_algos: CONVOLUTION_FWD
+    label: "NCHW_TENSOR_OP"
+  }
+}
+
+# This 3D convolution produces an illegal memory access using the FFT tiling
+# algorithm. Tested with cuDNN 7.0.5.
+#
+# See nvbugs/2138754.
+convolution_test {
+  reference {
+    input {
+      dimension: 12
+      dimension: 4095
+      dimension: 1
+      dimension: 1
+      dimension: 1
+
+      stride: 4095
+      stride: 1
+      stride: 1
+      stride: 1
+      stride: 1
+
+      data_type: DATA_FLOAT
+    }
+    filter {
+      dimension: 4095
+      dimension: 4095
+      dimension: 1
+      dimension: 1
+      dimension: 1
+      data_type: DATA_FLOAT
+      format: TENSOR_NCHW
+    }
+    output {
+      dimension: 12
+      dimension: 4095
+      dimension: 1
+      dimension: 1
+      dimension: 1
+
+      stride: 4095
+      stride: 1
+      stride: 1
+      stride: 1
+      stride: 1
+
+      data_type: DATA_FLOAT
+    }
+    convolution {
+      pad: 0
+      pad: 0
+      pad: 0
+      compute_mode: DATA_FLOAT
+    }
+    fwd_algo: CONVOLUTION_FWD_ALGO_FFT_TILING
+    # Disabled to prevent crashing on normal runs.
+    label: "DISABLED_CONVOLUTION_3D_FWD_12x4095x1x1x1_4095x4095x1x1x1_SAME_Illegal_Address"
+  }
+}
+
+# This grouped convolution produces a misaligned memory access using the
+# backward filter FFT algorithm. Tested with cuDNN 7.1.4.
+#
+# See nvbugs/2181786.
+convolution_test {
+  reference {
+    input {
+      dimension: 7
+      dimension: 24
+      dimension: 51
+      dimension: 23
+      format: TENSOR_NCHW
+      data_type: DATA_FLOAT
+    }
+    filter {
+      dimension: 222
+      dimension: 8
+      dimension: 1
+      dimension: 3
+      format: TENSOR_NCHW
+      data_type: DATA_FLOAT
+    }
+    convolution {
+      pad: 0
+      pad: 1
+      compute_mode: DATA_FLOAT
+      group_count: 3
+    }
+    bwd_filter_algo: CONVOLUTION_BWD_FILTER_ALGO_FFT
+    label: "DISABLED_CONVOLUTION_BWD_FILTER_NCHW_FLOAT_7x24x51x23_222x8x1x3_SAME_Misaligned_Address"
+  }
+}
+
+# Checks that the testing code handles beta > 0 correctly.
+convolution_test {
+  reference {
+    one_minus_alpha: 0.3
+    beta: 0.4
+    input {
+      dimension: 1
+      dimension: 1
+      dimension: 128
+      dimension: 128
+      format: TENSOR_NCHW
+      data_type: DATA_FLOAT
+    }
+    filter {
+      dimension: 1
+      dimension: 1
+      dimension: 3
+      dimension: 3
+      format: TENSOR_NCHW
+      data_type: DATA_FLOAT
+    }
+    convolution {
+      pad: 1
+      pad: 1
+      compute_mode: DATA_FLOAT
+    }
+    fwd_algo: CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM
+    label: "BlendResult"
+  }
+  test {
+    all_algos: CONVOLUTION_FWD
+  }
+}
+
+# Basic grouped convolution test.
+convolution_test {
+  reference {
+    input {
+      dimension: 1
+      dimension: 10  # = filter_in_depth * group_count
+      dimension: 13
+      dimension: 13
+      format: TENSOR_NCHW
+      data_type: DATA_FLOAT
+    }
+    filter {
+      dimension: 35  # = depth_multiplier * group_count
+      dimension: 2
+      dimension: 3
+      dimension: 3
+      format: TENSOR_NCHW
+      data_type: DATA_FLOAT
+    }
+    output {
+      dimension: 1
+      dimension: 35  # = filter_out_depth
+      dimension: 13
+      dimension: 13
+      format: TENSOR_NCHW
+      data_type: DATA_FLOAT
+    }
+    convolution {
+      pad: 1
+      pad: 1
+      compute_mode: DATA_FLOAT
+      group_count: 5
+    }
+    fwd_algo: CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM
+    label: "GroupedConvolution"
+  }
+  test {
+    all_algos: CONVOLUTION_FWD
+  }
+}
+
+# This test fails because TENSOR_OP_MATH + CONVOLUTION_BWD_DATA_ALGO_1
+# incorrectly assumes a zero-initialized workspace. The bug reproduces on
+# TITAN V with CUDA 9.0 and cuDNN 7.1.4.
+#
+# See nvbugs/2254619.
+convolution_test {
+  reference {
+    input {
+      dimension: 128
+      dimension: 1024
+      dimension: 14
+      dimension: 14
+      data_type: DATA_HALF
+      format: TENSOR_NHWC
+    }
+    filter {
+      dimension: 2048
+      dimension: 1024
+      dimension: 1
+      dimension: 1
+      data_type: DATA_HALF
+      format: TENSOR_NCHW
+    }
+    output {
+      dimension: 128
+      dimension: 2048
+      dimension: 7
+      dimension: 7
+      data_type: DATA_HALF
+      format: TENSOR_NCHW
+    }
+    convolution {
+      pad: 0
+      pad: 0
+      filter_stride: 2
+      filter_stride: 2
+      compute_mode: DATA_FLOAT
+      math_type: DEFAULT_MATH
+      mode: CROSS_CORRELATION
+    }
+    bwd_data_algo: CONVOLUTION_BWD_DATA_ALGO_0
+    label: "GarbageInWorkspace"
+  }
+  test {
+    convolution { math_type: TENSOR_OP_MATH }
+    all_algos: CONVOLUTION_BWD_DATA
+  }
+  test {
+    input { format: TENSOR_NHWC }
+    filter { format: TENSOR_NHWC }
+    output { format: TENSOR_NHWC }
+    convolution { math_type: TENSOR_OP_MATH }
+    all_algos: CONVOLUTION_BWD_DATA
+  }
+}
+
+# Crashes with CUDA 9.0 and cuDNN 7.1.4 on TITAN V. The layout combination is
+# indeed documentated as not supported, but cuDNN should return an error
+# instead.
+#
+# See nvbugs/2260917.
+convolution_test {
+  reference {
+    input {
+      dimension: 128
+      dimension: 1024
+      dimension: 14
+      dimension: 14
+      data_type: DATA_HALF
+      format: TENSOR_NCHW
+    }
+    filter {
+      dimension: 2048
+      dimension: 1024
+      dimension: 1
+      dimension: 1
+      data_type: DATA_HALF
+      format: TENSOR_NHWC
+    }
+    output {
+      dimension: 128
+      dimension: 2048
+      dimension: 7
+      dimension: 7
+      data_type: DATA_HALF
+      format: TENSOR_NHWC
+    }
+    convolution {
+      filter_stride: 2
+      filter_stride: 2
+      compute_mode: DATA_FLOAT
+      math_type: TENSOR_OP_MATH
+      mode: CROSS_CORRELATION
+    }
+    bwd_data_algo: CONVOLUTION_BWD_DATA_ALGO_1
+    # Disabled to prevent crashing on normal runs.
+    label: "DISABLED_NCHW_NHWC_NHWC_Crash"
+  }
+}
+
+# TITAN V + cuDNN 7.1.4 + CUDA 9.0
+#
+# The convolution call should return an error code, but instead it sliently
+# went wild and cause out-of-bound memory access, resulting illegal access
+# code in succeeding cuDNN calls. cuda-memcheck seems to be needed to stably
+# reproduce the illegal access crash.
+#
+# See nvbugs/2270290.
+convolution_test {
+  reference {
+    input {
+      dimension: 128
+      dimension: 64
+      dimension: 56
+      dimension: 56
+      data_type: DATA_HALF
+      format: TENSOR_NHWC
+    }
+    filter {
+      dimension: 256
+      dimension: 64
+      dimension: 1
+      dimension: 1
+      data_type: DATA_HALF
+      format: TENSOR_NHWC
+    }
+    output {
+      dimension: 128
+      dimension: 256
+      dimension: 56
+      dimension: 56
+      data_type: DATA_HALF
+      format: TENSOR_NCHW
+    }
+    convolution {
+      filter_stride: 1
+      filter_stride: 1
+      compute_mode: DATA_FLOAT
+      math_type: TENSOR_OP_MATH
+      mode: CROSS_CORRELATION
+    }
+    fwd_algo: CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM
+    # Disabled to prevent crashing on normal runs.
+    label: "DISABLED_NHWC_NHWC_NCHW_ILLEGAL_ACCESS"
+  }
+}
+
+# TITAN V + cuDNN 7.2 + CUDA 9.0
+#
+# Since the input buffer is specified with all 0.1s, the correct result
+# is 0.1 * 0.1 * 128 * 56 * 56 = 4014.08. We pick broadcasted 0.1 as the input
+# data for easy reasoning and not overflowing during the summation.
+#
+# We don't want to overflow the result, only because in our tests infs don't
+# compare equal infs. It's possible that we can still reproduce the bug by
+# having a inf - nan mismatch, if we consider all infs equal.
+#
+# For CONVOLUTION_BWD_FILTER_ALGO_1 with TENSOR_OP_MATH, the results are all
+# NaNs. Other algorithms produce close enough answers.
+#
+# See nvbugs/2354662.
+convolution_test {
+  reference {
+    input {
+      dimension: 128
+      dimension: 128
+      dimension: 56
+      dimension: 56
+      data_type: DATA_HALF
+      format: TENSOR_NHWC
+    }
+    filter {
+      dimension: 256
+      dimension: 128
+      dimension: 3
+      dimension: 3
+      data_type: DATA_HALF
+      format: TENSOR_NHWC
+    }
+    output {
+      dimension: 128
+      dimension: 256
+      dimension: 56
+      dimension: 56
+      data_type: DATA_HALF
+      format: TENSOR_NHWC
+    }
+    convolution {
+      filter_stride: 1
+      filter_stride: 1
+      pad: 1
+      pad: 1
+      compute_mode: DATA_FLOAT
+      math_type: DEFAULT_MATH
+      mode: CROSS_CORRELATION
+    }
+    bwd_filter_algo: CONVOLUTION_BWD_FILTER_ALGO_0
+    label: "CONVOLUTION_BWD_FILTER_128x128x56x56_256x128x3x3_Incorrect"
+  }
+  test {
+    all_algos: CONVOLUTION_BWD_FILTER
+  }
+  test {
+    convolution {
+      math_type: TENSOR_OP_MATH
+    }
+    all_algos: CONVOLUTION_BWD_FILTER
+  }
+  # We need smaller values so that the end results are not overflowed.
+  values_lower_bound: 0.1
+  values_upper_bound: 0.1
+}
+
+# We've seen precision loss between different algorithms on Volta, CUDA 9.0 and
+# CUDNN 7.2/7.1.4. One possible output:
+# Value of: IsOk(TensorDataEqual(ref_result_data, *result_data, *result_desc, tolerance))
+#   Actual: false (14 elements differ more than 0.1. Largest differences:
+# [1898]: 1.1582 vs 0.587891, error = 0.264253
+# [2575]: -0.547852 vs -0.976562, error = 0.216897
+# [3512]: -0.507324 vs -0.19812, error = 0.205134
+# [2550]: 0.604004 vs 1.00781, error = 0.201119
+# [408]: 0.872559 vs 0.54834, error = 0.173142
+# [360]: 0.806641 vs 0.49585, error = 0.172027
+# [1075]: -0.790527 vs -1.15234, error = 0.168103
+# [2181]: -2.16797 vs -1.66211, error = 0.159679)
+# Expected: true
+# format: TENSOR_NHWC
+# data_type: DATA_HALF
+# compute_mode: DATA_FLOAT
+# math_type: TENSOR_OP_MATH
+# algo: CONVOLUTION_BWD_FILTER_ALGO_0
+#
+# Note that this isn't necessarily a bug. Re-associating floating point
+# additions on a variety of exponents may result in quite a difference.
+#
+# The difference is large between `ALGO_0 + default math` vs
+# `ALGO_0 + tensor core math`. Other algorithm + mode combinations seem fine.
+convolution_test {
+  reference {
+    input {
+      dimension: 128
+      dimension: 64
+      dimension: 56
+      dimension: 56
+      data_type: DATA_HALF
+      format: TENSOR_NHWC
+    }
+    filter {
+      dimension: 64
+      dimension: 64
+      dimension: 1
+      dimension: 1
+      data_type: DATA_HALF
+      format: TENSOR_NHWC
+    }
+    output {
+      dimension: 128
+      dimension: 64
+      dimension: 56
+      dimension: 56
+      data_type: DATA_HALF
+      format: TENSOR_NHWC
+    }
+    convolution {
+      filter_stride: 1
+      filter_stride: 1
+      compute_mode: DATA_FLOAT
+      math_type: DEFAULT_MATH
+      mode: CROSS_CORRELATION
+    }
+    bwd_filter_algo: CONVOLUTION_BWD_FILTER_ALGO_0
+    label: "DISABLED_NHWC_BWD_FILTER_PrecisionLoss"
+  }
+  test {
+    all_algos: CONVOLUTION_BWD_FILTER
+  }
+  test {
+    convolution {
+      math_type: TENSOR_OP_MATH
+    }
+    all_algos: CONVOLUTION_BWD_FILTER
+  }
+  values_lower_bound: -1.
+  values_upper_bound: 1.
+}
+
+# TITAN V + cuDNN 7.1.4/7.2 + CUDA 9.0
+#
+# This failure is very flaky. It needs to be run for many times (e.g. using
+# --gtest_repeat=100) to produce a mismatch.
+#
+# Also, the failure only appears when the result buffer (in this case, the
+# filter buffer) is initialized with NaNs.
+convolution_test {
+  reference {
+    input {
+      dimension: 256
+      dimension: 3
+      dimension: 224
+      dimension: 224
+      data_type: DATA_HALF
+      format: TENSOR_NHWC
+    }
+    filter {
+      dimension: 64
+      dimension: 3
+      dimension: 7
+      dimension: 7
+      data_type: DATA_HALF
+      format: TENSOR_NHWC
+    }
+    output {
+      dimension: 256
+      dimension: 64
+      dimension: 112
+      dimension: 112
+      data_type: DATA_HALF
+      format: TENSOR_NHWC
+    }
+    convolution {
+      filter_stride: 2
+      filter_stride: 2
+      pad: 3
+      pad: 3
+      compute_mode: DATA_FLOAT
+      math_type: DEFAULT_MATH
+      mode: CROSS_CORRELATION
+    }
+    bwd_filter_algo: CONVOLUTION_BWD_FILTER_ALGO_0
+    label: "FlakyMismatch"
+  }
+  test {
+    all_algos: CONVOLUTION_BWD_FILTER
+  }
+  test {
+    convolution {
+      math_type: TENSOR_OP_MATH
+    }
+    all_algos: CONVOLUTION_BWD_FILTER
+  }
+  values_lower_bound: 0.001
+  values_upper_bound: 0.001
+}
+
+# Bug reproduced on cuDNN 7.4.2 + Volta|Pascal + CUDA 9.0.
+# Example output:
+# Value of: IsOk(TensorDataEqual(ref_result_data, *result_data, *result_desc, tolerance))
+#   Actual: false (6656 elements differ more than 0.0001. Largest differences:
+# [2407]: 0.06 vs 0.03, error = 0.0283019
+# [2406]: 0.06 vs 0.03, error = 0.0283019
+# [2415]: 0.06 vs 0.03, error = 0.0283019
+# [2411]: 0.06 vs 0.03, error = 0.0283019
+# [2403]: 0.06 vs 0.03, error = 0.0283019
+# [2416]: 0.06 vs 0.03, error = 0.0283019
+# [2410]: 0.06 vs 0.03, error = 0.0283019
+# [2402]: 0.06 vs 0.03, error = 0.0283019)
+# Expected: true
+# format: TENSOR_NCHW
+# data_type: DATA_FLOAT
+# compute_mode: DATA_FLOAT
+# math_type: DEFAULT_MATH
+# algo: CONVOLUTION_BWD_DATA_ALGO_FFT_TILING
+#
+# See nvbugs/2540779.
+convolution_test {
+  reference {
+    input {
+      dimension: [1, 32, 50, 50]
+      data_type: DATA_FLOAT
+      format: TENSOR_NCHW
+    }
+    filter {
+      dimension: [1, 32, 6, 6]
+      data_type: DATA_FLOAT
+      format: TENSOR_NCHW
+    }
+    output {
+      dimension: [1, 1, 25, 25]
+      data_type: DATA_FLOAT
+      format: TENSOR_NCHW
+    }
+    convolution {
+      pad: 2
+      pad: 2
+      filter_stride: 2
+      filter_stride: 2
+      compute_mode: DATA_FLOAT
+      math_type: DEFAULT_MATH
+      mode: CROSS_CORRELATION
+    }
+    bwd_data_algo: CONVOLUTION_BWD_DATA_ALGO_0
+    label: "CONVOLUTION_BWD_INPUT_1x32x50x50x6x6_Incorrect"
+  }
+  test {
+    all_algos: CONVOLUTION_BWD_DATA
+  }
+  values_lower_bound: 0.1
+  values_upper_bound: 0.1
+}
+
+# Bug reproduced on cuDNN 7.6.4 + Volta + CUDA 10.1.
+# Example output:
+# Value of: IsOk(TensorDataEqual(ref_result_data, *result_data, *result_desc, tolerance))
+#   Actual: false (112 elements differ more than 0.0001. Largest differences:
+# [40]: 1.00635 vs 1.21394, error = 0.0937623
+# [121]: 1.12444 vs 1.04241, error = 0.038613
+# [120]: 43.931 vs 43.4459, error = 0.0107964
+# [136]: 59.6611 vs 60.1196, error = 0.00750156
+# [168]: 37.767 vs 38.0539, error = 0.00734498
+# [146]: -2.7744 vs -2.79991, error = 0.00671352
+# [15]: 48.2762 vs 48.0094, error = 0.00541407
+# [7]: 33.1266 vs 32.9712, error = 0.00455383)
+#
+# Other algorithms (compared against IMPLICIT_GEMM) is correct.
+#
+# See nvbugs/2774617.
+convolution_test {
+  reference {
+    input {
+      dimension: 1
+      dimension: 1
+      dimension: 16
+      dimension: 16
+      data_type: DATA_FLOAT
+      format: TENSOR_NCHW
+    }
+    filter {
+      dimension: 1
+      dimension: 1
+      dimension: 5
+      dimension: 5
+      data_type: DATA_FLOAT
+      format: TENSOR_NCHW
+    }
+    output {
+      dimension: 1
+      dimension: 1
+      dimension: 16
+      dimension: 16
+      data_type: DATA_FLOAT
+      format: TENSOR_NCHW
+    }
+    convolution {
+      filter_stride: 1
+      filter_stride: 1
+      pad: 2
+      pad: 2
+      compute_mode: DATA_FLOAT
+      math_type: TENSOR_OP_MATH
+      mode: CROSS_CORRELATION
+    }
+    fwd_algo: CONVOLUTION_FWD_ALGO_WINOGRAD_NONFUSED
+    # Disabled to prevent crashing on normal runs.
+    label: "CONVOLUTION_FWD_16x16_5x5_WINOGRAD_NONFUSED_INPRECISE"
+  }
+  test {
+    fwd_algo: CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM
+  }
+  values_lower_bound: -15
+  values_upper_bound: 15
+}
